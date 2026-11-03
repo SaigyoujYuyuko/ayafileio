@@ -16,7 +16,7 @@ Core state, requests, buffers and completions
 Platform backends and OS primitives
 ```
 
-- `python/ayafileio/`: public Python API, `AsyncFile`, text decoding, newline handling, open helpers and compatibility entry points. `_host.py` selects the running host: asyncio uses its native loop directly, while Trio gets a lazily imported token adapter and lightweight awaitables. Framework-specific gather, semaphore and thread offload helpers also live behind this seam.
+- `python/ayafileio/`: public Python API, `AsyncFile`, text decoding, newline handling, open helpers and compatibility entry points. `_host.py` selects the running host: asyncio uses its native loop directly, Trio gets a lazily imported token adapter, and other compatible backends fall back to AnyIO >= 4.11 `EventLoopToken` / `run_sync_soon()`. Lightweight awaitables and framework-specific gather, semaphore and thread offload helpers live behind the same seam.
 - `src/bindings/python/`: the only code allowed to include `Python.h` or nanobind. It owns `PyAsyncFile`, `PyOperation`, awaitable creation through the host interface, Python buffer ownership, `ResultBatcher` and the unified `BatcherRegistry`.
 - `src/core/`: platform-neutral native types. `FileState`, `BackendRegistry`, `FileHandle`, `Buffer`, `Completion`, `IORequest`, configuration, buffer pool and global thread pool. No CPython types, concrete backend includes or OS handle types.
 - `src/platform/`: thin native file and error primitives shared by backends.
@@ -43,7 +43,9 @@ Do not add `using namespace` to shared headers. `NB_MODULE` and macro-only files
 
 ## Native completion model
 
-`core::Operation` is the native boundary for an asynchronous operation. It supports submission, asynchronous completion, inline completion and completion-only accounting. `PyOperation` implements this interface using a host-created awaitable and a per-host `ResultBatcher`. asyncio uses `loop.create_future()` and `loop.call_soon_threadsafe()` directly. Trio caches a weakly held host per Trio token and uses `run_sync_soon()` for the same batched drain, so framework selection does not add a dispatcher thread or per-operation host detection.
+`core::Operation` is the native boundary for an asynchronous operation. It supports submission, asynchronous completion, inline completion and completion-only accounting. `PyOperation` implements this interface using a host-created awaitable and a per-host `ResultBatcher`. asyncio uses `loop.create_future()` and `loop.call_soon_threadsafe()` directly. Trio caches a weakly held host per Trio token, while the generic AnyIO fallback keys the same lifecycle by `EventLoopToken`; both schedule one batched drain through their token's `run_sync_soon()`. No dispatcher thread is added.
+
+Every file's first ordinary operation binds it to one host. Later ordinary operations compare the current host and reject a mismatch instead of delivering to a stale loop or token. `close()` is intentionally different: it uses the calling host so the file can be drained and closed after its original host exits. The registry retains weak host identities, independent outstanding counters and address-reuse checks for every loop or token.
 
 `core::Buffer` owns native or type-erased storage without knowing its host. This preserves:
 

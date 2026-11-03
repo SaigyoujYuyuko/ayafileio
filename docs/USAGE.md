@@ -55,8 +55,15 @@ asyncio.run(main())
 
 Everything is a plain coroutine — if you know `async`/`await`, you know the
 API. The same file APIs run under `trio.run()` and AnyIO's asyncio or Trio
-backend. Trio and AnyIO are optional: asyncio-only installations do not import
-or require them, and the base package has no runtime dependencies.
+backend. With AnyIO >= 4.11, a generic `EventLoopToken` / `run_sync_soon()`
+fallback also supports compatible third-party backends. Trio and AnyIO are
+optional: asyncio-only installations do not import or require them, and the
+base package has no runtime dependencies.
+
+Ordinary I/O on an open file is host-affine: using it from a different event
+loop or async host raises `RuntimeError` instead of delivering results to the
+old host. `close()` is the exception and may be awaited from any host, including
+after the original event loop has finished.
 
 `AsyncFile` supports iteration (`async for line in f`), `readline()`,
 `readlines()`, `seek()`/`tell()`, `truncate()`, `flush()`, and the usual

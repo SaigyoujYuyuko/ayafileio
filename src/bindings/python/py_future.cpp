@@ -24,7 +24,19 @@ PyObject* current_host() {
         PyErr_Clear();
         host = PyObject_CallNoArgs(g_current_trio_host);
     }
+    if (!host) {
+        PyErr_Clear();
+        host = PyObject_CallNoArgs(g_current_anyio_host);
+    }
     return host;
+}
+
+bool LoopContext::is_current() const {
+    PyObject* host = current_host();
+    if (!host) throw nb::python_error();
+    const bool same = host == loop_;
+    Py_DECREF(host);
+    return same;
 }
 
 std::shared_ptr<LoopContext> LoopContext::current() {

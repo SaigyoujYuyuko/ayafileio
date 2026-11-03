@@ -29,6 +29,7 @@ extern PyObject* g_InvalidStateError;
 extern PyObject* g_UnsupportedOperation;
 extern PyObject* g_get_running_loop;
 extern PyObject* g_current_trio_host;
+extern PyObject* g_current_anyio_host;
 extern PyObject* g_str_set_result;
 extern PyObject* g_str_set_exception;
 extern PyObject* g_str_create_future;

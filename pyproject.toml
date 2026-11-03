@@ -9,7 +9,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "ayafileio"
-version = "2.0.5"
+version = "2.0.6"
 description = "Cross-platform async file API for Python. Blazing fast like Shameimaru Aya."
 readme = "README.md"
 license = {text = "MIT"}
@@ -74,7 +74,7 @@ dev = [
     "pytest",
     "pytest-asyncio",
     "aiofiles",
-    "anyio",
+    "anyio>=4.11",
     "trio",
     "pyyaml",
     "rich",

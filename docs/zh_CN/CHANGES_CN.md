@@ -5,6 +5,19 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)，
 本项目遵循 [语义化版本](https://semver.org/spec/v2.0.0.html)。
 
+## [2.0.6] - 2026-11-03
+
+### 新增
+- **现在可通过 AnyIO 自身后端接口接入不同后端。** 当 asyncio 和 Trio 快路径都不认识当前宿主时，
+  ayafileio 使用 AnyIO >= 4.11 的 `EventLoopToken` 与 `AsyncBackend.run_sync_soon()` 批量投递
+  完成结果；高级辅助接口也使用 AnyIO Event、TaskGroup、Semaphore 和 worker thread，使兼容的
+  第三方后端无需新增 C++ 宿主适配器。AnyIO 仍为可选依赖。
+
+### 修复
+- **普通文件 I/O 不再投递到此前绑定的旧宿主。** 操作会验证当前 host，发现不同的 loop、Trio token
+  或 AnyIO token 时抛出 `RuntimeError`，不再使用失效宿主。`close()` 则刻意使用调用时的 host，
+  因此原事件循环结束后仍能安全关闭文件。普通 I/O 保持宿主亲和，close 允许跨宿主执行。
+
 ## [2.0.5] - 2026-11-03
 
 ### 新增

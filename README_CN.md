@@ -38,7 +38,7 @@
 - 缓存命中内联快车道：热路径小读在调用线程就地完成，await 不让出事件循环（IOCP 同步完成 / io_uring COOP_TASKRUN / macOS mincore + pread）
 - 单文件句柄抗住数千并发操作
 - 与 aiofiles 兼容的 API，与标准 `async/await` 用法一致
-- 支持 asyncio、Trio 与 AnyIO（仅在使用 Trio 时加载它）
+- 支持 asyncio、Trio 与 AnyIO，包括 AnyIO >= 4.11 第三方后端（可选框架仅在使用时加载）
 - 文本/二进制模式，自动编解码
 - 异步整文件复制：`acopy()`，Linux/Windows 走 OS 级快车道
 - 所有后端共享一套运行时可调的配置

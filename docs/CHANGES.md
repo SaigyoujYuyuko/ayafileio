@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.6] - 2026-11-03
+
+### Added
+- **AnyIO backends can now be integrated through AnyIO's own backend interface.** When neither the
+  asyncio nor Trio fast path recognizes the host, ayafileio uses AnyIO >= 4.11 `EventLoopToken` and
+  `AsyncBackend.run_sync_soon()` for batched completion delivery. The same fallback uses AnyIO Events,
+  TaskGroups, Semaphores and worker threads for higher-level helpers, allowing compatible third-party
+  backends without new C++ host adapters. AnyIO remains optional.
+
+### Fixed
+- **Files no longer deliver ordinary I/O to a previously bound event-loop host.** Operations verify the
+  current host and raise `RuntimeError` instead of using a stale loop, Trio token or AnyIO token.
+  `close()` deliberately uses the calling host, so a file can still be closed safely after its original
+  event loop has finished. Ordinary I/O is host-affine; close is allowed across hosts.
+
 ## [2.0.5] - 2026-11-03
 
 ### Added

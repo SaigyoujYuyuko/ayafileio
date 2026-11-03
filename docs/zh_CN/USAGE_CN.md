@@ -52,8 +52,13 @@ asyncio.run(main())
 ```
 
 所有操作都是普通协程——会用 `async`/`await` 就会用这个 API。同一套文件接口
-也可在 `trio.run()` 以及 AnyIO 的 asyncio / Trio 后端下运行。Trio 和 AnyIO
-都是可选的：只用 asyncio 时不会导入或要求安装它们，基础包仍无运行时依赖。
+也可在 `trio.run()` 以及 AnyIO 的 asyncio / Trio 后端下运行。安装 AnyIO >= 4.11
+时，还可通过通用 `EventLoopToken` / `run_sync_soon()` 后备路径支持兼容的第三方后端。
+Trio 和 AnyIO 都是可选的：只用 asyncio 时不会导入或要求安装它们，基础包仍无运行时依赖。
+
+已打开文件的普通 I/O 保持宿主亲和：在另一个事件循环或异步宿主中使用会抛出
+`RuntimeError`，而不会把结果误投给旧宿主。`close()` 是例外，可在任意宿主中等待完成，
+包括原事件循环已经结束之后。
 
 `AsyncFile` 支持迭代（`async for line in f`）、`readline()`、
 `readlines()`、`seek()`/`tell()`、`truncate()`、`flush()`，以及常见的

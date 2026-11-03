@@ -24,6 +24,7 @@ public:
 
     PyObject* create_future() const { return create_future_; }
     PyObject* identity() const { return loop_; }
+    bool is_current() const;
     ResultBatcher* batcher() const { return batcher_; }
 
 private:

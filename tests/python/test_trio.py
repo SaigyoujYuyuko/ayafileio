@@ -160,5 +160,5 @@ def test_trio_hosts_are_released_across_runs(tmp_path):
 def test_native_operation_outside_supported_loop_has_clear_error(tmp_path):
     path = tmp_path / "outside.bin"
     path.write_bytes(b"outside")
-    with pytest.raises(RuntimeError, match="asyncio or Trio"):
+    with pytest.raises(RuntimeError, match="asyncio, Trio, or AnyIO"):
         ayafileio._ayafileio.read_whole_async(str(path))

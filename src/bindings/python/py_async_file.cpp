@@ -40,7 +40,14 @@ PyAsyncFile::~PyAsyncFile() {
 }
 
 std::shared_ptr<LoopContext> PyAsyncFile::loop() {
-    if (!loop_) loop_ = LoopContext::current();
+    if (!loop_) {
+        loop_ = LoopContext::current();
+    } else if (!loop_->is_current()) {
+        PyErr_SetString(
+            PyExc_RuntimeError,
+            "file is bound to a different event loop host");
+        throw nb::python_error();
+    }
     return loop_;
 }
 
@@ -116,20 +123,20 @@ nb::object PyAsyncFile::flush() {
 }
 
 nb::object PyAsyncFile::close() {
-    if (!loop_) {
-        PyObject* current = current_host();
-        if (!current) {
-            PyErr_Clear();
-            {
-                GilRelease release;
-                handle_->close_impl();
-            }
-            Py_INCREF(Py_None);
-            return nb::steal<nb::object>(nb::handle(Py_None));
+    std::shared_ptr<LoopContext> context;
+    try {
+        context = LoopContext::current();
+    } catch (nb::python_error&) {
+        PyErr_Clear();
+        {
+            GilRelease release;
+            handle_->close_impl();
         }
-        Py_DECREF(current);
+        Py_INCREF(Py_None);
+        return nb::steal<nb::object>(nb::handle(Py_None));
     }
-    auto op = operation(core::ReqType::Other);
+
+    auto op = std::make_shared<PyOperation>(context, core::ReqType::Other);
     try {
         GilRelease release;
         handle_->close(op);

@@ -40,7 +40,7 @@ Using ayafileio in an interesting way? See [STORY.md](https://github.com/Saigyou
 - Cache-hit inline fast paths: hot small reads complete on the calling thread (IOCP sync-completion / io_uring COOP_TASKRUN / macOS mincore + pread)
 - Thousands of concurrent operations on a single file handle
 - aiofiles-compatible API, plain `async/await`
-- Works with asyncio, Trio, and AnyIO (Trio loaded only when used)
+- Works with asyncio, Trio, and AnyIO, including AnyIO >= 4.11 third-party backends (optional frameworks loaded only when used)
 - Text and binary modes with automatic encoding/decoding
 - Async whole-file copy: `acopy()` with OS-level fast paths (zero-copy on Linux)
 - Runtime-tunable configuration shared by all backends
