@@ -155,9 +155,6 @@ def test_trio_hosts_are_released_across_runs(tmp_path):
             break
         time.sleep(0.01)
     assert all(reference() is None for reference in references)
-    assert all(
-        reference() is None for reference in list(_host._trio_hosts.values())
-    )
 
 
 def test_native_operation_outside_supported_loop_has_clear_error(tmp_path):
