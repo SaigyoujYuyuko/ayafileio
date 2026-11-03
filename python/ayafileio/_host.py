@@ -5,7 +5,7 @@ import weakref
 
 _NO_HOST_MESSAGE = "no running asyncio or Trio event loop"
 _trio_hosts = {}
-_trio_hosts_lock = threading.Lock()
+_trio_hosts_lock = threading.RLock()
 
 
 def _load_trio():

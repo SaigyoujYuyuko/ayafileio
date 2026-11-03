@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   thread. Whole-file, multi-file and copy helpers work under both frameworks. Trio and AnyIO remain
   test-only dependencies, not runtime requirements.
 
+### Fixed
+- **Trio host-cache cleanup can no longer deadlock during garbage collection.** Creating a host
+  weakref may run an older host's cleanup callback while the cache lock is already held. The cache
+  now uses a reentrant lock, allowing the same-thread callback to finish while retaining mutual
+  exclusion with other threads.
+
 ## [2.0.4] - 2026-10-31
 
 > **Versioning policy**: **PATCH**. No public signature or documented behavior changes.
