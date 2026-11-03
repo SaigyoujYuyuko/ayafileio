@@ -1,15 +1,15 @@
 """整文件操作：一次 await 完成 open + 读写 + close。
 
-面向 ``asyncio.gather`` 批量处理多个文件的常见形态（模型权重按层加载、
-配置文件批量读取、小文件聚合等），省去手写 ``async with`` 的样板。
+面向并发批量处理多个文件的常见形态（模型权重按层加载、配置文件批量读取、
+小文件聚合等），省去手写 ``async with`` 的样板。
 底层就是 ``ayafileio.open`` + 单次 ``read()``/``write()``——行为、编码
 语义与手动逐行写法完全一致。
 """
 
-import asyncio
 import os
 from collections.abc import Iterable
 
+from ._host import _gather, _semaphore
 from ._open import open as _open
 from ._open import aopen as _aopen
 from ._ayafileio import read_whole_async as _read_whole_native
@@ -79,13 +79,13 @@ async def read_bytes_many(paths: Iterable[str | os.PathLike[str]], *, max_concur
 
         results = await ayafileio.read_bytes_many(model_shard_paths)
     """
-    sem = asyncio.Semaphore(max_concurrency)
+    sem = _semaphore(max_concurrency)
 
     async def _one(p) -> bytes:
         async with sem:
             return await _read_whole_native(os.fspath(p))
 
-    return list(await asyncio.gather(*(_one(p) for p in paths)))
+    return list(await _gather((_one(p) for p in paths)))
 
 
 async def read_text_many(paths: Iterable[str | os.PathLike[str]], encoding: "str | None" = None, *,
@@ -99,14 +99,14 @@ async def read_text_many(paths: Iterable[str | os.PathLike[str]], encoding: "str
 
         configs = await ayafileio.read_text_many(paths, encoding="utf-8")
     """
-    sem = asyncio.Semaphore(max_concurrency)
+    sem = _semaphore(max_concurrency)
 
     async def _one(p) -> str:
         async with sem:
             async with _aopen(p, "r", encoding=encoding) as f:
                 return await f.read()
 
-    return list(await asyncio.gather(*(_one(p) for p in paths)))
+    return list(await _gather((_one(p) for p in paths)))
 
 
 async def write_bytes_many(pairs: Iterable[tuple[str | os.PathLike[str], bytes]], *, max_concurrency: int = 64) -> "list[int]":
@@ -123,7 +123,7 @@ async def write_bytes_many(pairs: Iterable[tuple[str | os.PathLike[str], bytes]]
         counts = await ayafileio.write_bytes_many(
             [(p, payload) for p, payload in shard_items])
     """
-    sem = asyncio.Semaphore(max_concurrency)
+    sem = _semaphore(max_concurrency)
 
     async def _one(p, data: bytes) -> int:
         async with sem:
@@ -131,7 +131,7 @@ async def write_bytes_many(pairs: Iterable[tuple[str | os.PathLike[str], bytes]]
                 return await f.write(data)
 
     items = list(pairs)
-    return list(await asyncio.gather(*(_one(p, d) for p, d in items)))
+    return list(await _gather((_one(p, d) for p, d in items)))
 
 
 async def write_text_many(pairs: Iterable[tuple[str | os.PathLike[str], str]], encoding: "str | None" = None, *,
@@ -147,7 +147,7 @@ async def write_text_many(pairs: Iterable[tuple[str | os.PathLike[str], str]], e
 
         counts = await ayafileio.write_text_many(items, encoding="utf-8")
     """
-    sem = asyncio.Semaphore(max_concurrency)
+    sem = _semaphore(max_concurrency)
 
     async def _one(p, data: str) -> int:
         async with sem:
@@ -155,4 +155,4 @@ async def write_text_many(pairs: Iterable[tuple[str | os.PathLike[str], str]], e
                 return await f.write(data)
 
     items = list(pairs)
-    return list(await asyncio.gather(*(_one(p, d) for p, d in items)))
+    return list(await _gather((_one(p, d) for p, d in items)))

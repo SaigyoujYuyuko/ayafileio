@@ -51,7 +51,10 @@ async def main():
 asyncio.run(main())
 ```
 
-所有操作都是普通协程——会用 `async`/`await` 就会用这个 API。
+所有操作都是普通协程——会用 `async`/`await` 就会用这个 API。同一套文件接口
+也可在 `trio.run()` 以及 AnyIO 的 asyncio / Trio 后端下运行。Trio 和 AnyIO
+都是可选的：只用 asyncio 时不会导入或要求安装它们，基础包仍无运行时依赖。
+
 `AsyncFile` 支持迭代（`async for line in f`）、`readline()`、
 `readlines()`、`seek()`/`tell()`、`truncate()`、`flush()`，以及常见的
 `closed` / `name` / `mode` 属性。

@@ -7,7 +7,7 @@ ayafileio 2.0 separates the native I/O engine from Python semantics. The goal is
 ```text
 Python API and text/binary semantics
               ↓
-CPython / asyncio bindings
+CPython / event-loop host bindings
               ↓
 Native file handle and backend registry
               ↓
@@ -16,8 +16,8 @@ Core state, requests, buffers and completions
 Platform backends and OS primitives
 ```
 
-- `python/ayafileio/`: public Python API, `AsyncFile`, text decoding, newline handling, open helpers and compatibility entry points.
-- `src/bindings/python/`: the only code allowed to include `Python.h` or nanobind. It owns `PyAsyncFile`, `PyOperation`, Future creation, Python buffer ownership, `ResultBatcher` and the unified `BatcherRegistry`.
+- `python/ayafileio/`: public Python API, `AsyncFile`, text decoding, newline handling, open helpers and compatibility entry points. `_host.py` selects the running host: asyncio uses its native loop directly, while Trio gets a lazily imported token adapter and lightweight awaitables. Framework-specific gather, semaphore and thread offload helpers also live behind this seam.
+- `src/bindings/python/`: the only code allowed to include `Python.h` or nanobind. It owns `PyAsyncFile`, `PyOperation`, awaitable creation through the host interface, Python buffer ownership, `ResultBatcher` and the unified `BatcherRegistry`.
 - `src/core/`: platform-neutral native types. `FileState`, `BackendRegistry`, `FileHandle`, `Buffer`, `Completion`, `IORequest`, configuration, buffer pool and global thread pool. No CPython types, concrete backend includes or OS handle types.
 - `src/platform/`: thin native file and error primitives shared by backends.
 - `src/backend/`: IOCP, io_uring, Dispatch I/O and thread-pool implementations. Backends submit native operations and produce `core::Completion`; they do not create or resolve Python Futures.
@@ -43,7 +43,7 @@ Do not add `using namespace` to shared headers. `NB_MODULE` and macro-only files
 
 ## Native completion model
 
-`core::Operation` is the native boundary for an asynchronous operation. It supports submission, asynchronous completion, inline completion and completion-only accounting. `PyOperation` implements this interface using a Python Future and a per-loop `ResultBatcher`.
+`core::Operation` is the native boundary for an asynchronous operation. It supports submission, asynchronous completion, inline completion and completion-only accounting. `PyOperation` implements this interface using a host-created awaitable and a per-host `ResultBatcher`. asyncio uses `loop.create_future()` and `loop.call_soon_threadsafe()` directly. Trio caches a weakly held host per Trio token and uses `run_sync_soon()` for the same batched drain, so framework selection does not add a dispatcher thread or per-operation host detection.
 
 `core::Buffer` owns native or type-erased storage without knowing its host. This preserves:
 

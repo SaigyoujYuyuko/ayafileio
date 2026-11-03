@@ -54,7 +54,11 @@ asyncio.run(main())
 ```
 
 Everything is a plain coroutine — if you know `async`/`await`, you know the
-API. `AsyncFile` supports iteration (`async for line in f`), `readline()`,
+API. The same file APIs run under `trio.run()` and AnyIO's asyncio or Trio
+backend. Trio and AnyIO are optional: asyncio-only installations do not import
+or require them, and the base package has no runtime dependencies.
+
+`AsyncFile` supports iteration (`async for line in f`), `readline()`,
 `readlines()`, `seek()`/`tell()`, `truncate()`, `flush()`, and the usual
 `closed` / `name` / `mode` properties.
 

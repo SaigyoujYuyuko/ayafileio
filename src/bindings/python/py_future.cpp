@@ -18,8 +18,17 @@ LoopContext::~LoopContext() {
     PyGILState_Release(state);
 }
 
+PyObject* current_host() {
+    PyObject* host = PyObject_CallNoArgs(g_get_running_loop);
+    if (!host) {
+        PyErr_Clear();
+        host = PyObject_CallNoArgs(g_current_trio_host);
+    }
+    return host;
+}
+
 std::shared_ptr<LoopContext> LoopContext::current() {
-    PyObject* loop = PyObject_CallNoArgs(g_get_running_loop);
+    PyObject* loop = current_host();
     if (!loop) throw nb::python_error();
     PyObject* create_future = PyObject_GetAttr(loop, g_str_create_future);
     if (!create_future) {

@@ -7,10 +7,10 @@
 - 其它平台 / 快车道被内核拒绝（跨设备、NFS 等）: 位置读写流水线
 """
 
-import asyncio
 import os
 import shutil
 
+from ._host import _gather, _semaphore, _to_thread
 from ._open import open as _aopen
 
 _DEFAULT_CHUNK_SIZE = 4 * 1024 * 1024  # 4 MiB
@@ -96,17 +96,17 @@ async def acopy(
 
     if _os_copy is not None:
         try:
-            written = await asyncio.to_thread(_os_copy, src, dst)
+            written = await _to_thread(_os_copy, src, dst)
         except OSError:
             pass  # 快车道被拒 → 流水线兜底
         else:
             if copy_stat:
-                await asyncio.to_thread(shutil.copystat, src, dst)
+                await _to_thread(shutil.copystat, src, dst)
             return written
 
     written = await _copy_pipelined(src, dst, chunk_size, concurrency)
     if copy_stat:
-        await asyncio.to_thread(shutil.copystat, src, dst)
+        await _to_thread(shutil.copystat, src, dst)
     return written
 
 
@@ -118,7 +118,7 @@ async def _copy_pipelined(src, dst, chunk_size: int, concurrency: int) -> int:
             return 0
         await fout.truncate(size)  # 预分配 EOF，省掉并发写过程中的反复扩展
 
-        sem = asyncio.Semaphore(concurrency)
+        sem = _semaphore(concurrency)
 
         async def copy_chunk(offset: int, length: int) -> int:
             async with sem:
@@ -130,15 +130,7 @@ async def _copy_pipelined(src, dst, chunk_size: int, concurrency: int) -> int:
                 return pos
 
         tasks = [
-            asyncio.ensure_future(copy_chunk(off, min(chunk_size, size - off)))
+            copy_chunk(off, min(chunk_size, size - off))
             for off in range(0, size, chunk_size)
         ]
-        try:
-            results = await asyncio.gather(*tasks)
-        except BaseException:
-            # 出错或取消时收编剩余任务，避免文件关闭后还有写操作在飞
-            for task in tasks:
-                task.cancel()
-            await asyncio.gather(*tasks, return_exceptions=True)
-            raise
-        return sum(results)
+        return sum(await _gather(tasks, cancel_on_error=True))

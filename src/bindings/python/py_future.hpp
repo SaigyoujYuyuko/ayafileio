@@ -12,6 +12,8 @@
 
 namespace ayafileio::python {
 
+PyObject* current_host();
+
 class LoopContext {
 public:
     LoopContext(PyObject* loop, PyObject* create_future, ResultBatcher* batcher)

@@ -117,7 +117,7 @@ nb::object PyAsyncFile::flush() {
 
 nb::object PyAsyncFile::close() {
     if (!loop_) {
-        PyObject* current = PyObject_CallNoArgs(g_get_running_loop);
+        PyObject* current = current_host();
         if (!current) {
             PyErr_Clear();
             {

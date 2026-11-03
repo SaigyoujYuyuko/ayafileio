@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.5] - 2026-11-03
+
+### Added
+- **asyncio, Trio and AnyIO now share the same native asynchronous file operations.** The asyncio
+  path retains its direct loop/Future C API and per-host completion batching. Under Trio, a lazily
+  imported host adapter uses `TrioToken.run_sync_soon()` to schedule one drain per completion batch;
+  lightweight awaitables deliver results and exceptions without a second event loop or dispatcher
+  thread. Whole-file, multi-file and copy helpers work under both frameworks. Trio and AnyIO remain
+  test-only dependencies, not runtime requirements.
+
 ## [2.0.4] - 2026-10-31
 
 > **Versioning policy**: **PATCH**. No public signature or documented behavior changes.

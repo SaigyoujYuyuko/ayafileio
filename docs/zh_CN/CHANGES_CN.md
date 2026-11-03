@@ -5,6 +5,15 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)，
 本项目遵循 [语义化版本](https://semver.org/spec/v2.0.0.html)。
 
+## [2.0.5] - 2026-11-03
+
+### 新增
+- **asyncio、Trio 与 AnyIO 现在共用同一套原生异步文件操作。** asyncio 路径保留直接的
+  loop/Future C API 与按宿主批量完成机制；Trio 下按需加载宿主适配器，通过
+  `TrioToken.run_sync_soon()` 每批完成只调度一次 drain，由轻量 Awaitable 交付结果和异常，
+  不需要第二个事件循环或转发线程。整文件、多文件和复制辅助接口均支持两种框架。
+  Trio 和 AnyIO 仅为测试依赖，不是运行时依赖。
+
 ## [2.0.4] - 2026-10-31
 
 > **版本策略**：**PATCH**。无公开签名或已文档化行为变化。

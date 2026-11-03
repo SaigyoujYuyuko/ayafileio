@@ -41,6 +41,7 @@ PyObject* g_KeyboardInterrupt = nullptr;
 PyObject* g_InvalidStateError = nullptr;
 PyObject* g_UnsupportedOperation = nullptr;
 PyObject* g_get_running_loop = nullptr;
+PyObject* g_current_trio_host = nullptr;
 PyObject* g_str_set_result = nullptr;
 PyObject* g_str_set_exception = nullptr;
 PyObject* g_str_create_future = nullptr;
@@ -67,6 +68,12 @@ void cache_globals() {
         Py_DECREF(asyncio_exc);
     }
     Py_DECREF(asyncio);
+
+    auto* host = PyImport_ImportModule("ayafileio._host");
+    if (!host) throw nb::python_error();
+    g_current_trio_host = PyObject_GetAttrString(host, "_current_trio_host");
+    Py_DECREF(host);
+    if (!g_current_trio_host) throw nb::python_error();
 
     auto* io = PyImport_ImportModule("io");
     if (!io) throw nb::python_error();

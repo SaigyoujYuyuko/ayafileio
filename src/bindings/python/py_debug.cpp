@@ -1,6 +1,7 @@
 #include "py_api.hpp"
 
 #include "batcher_registry.hpp"
+#include "py_future.hpp"
 #include "../../backend/builtin.hpp"
 #include "../../core/global_thread_pool.hpp"
 #ifdef _WIN32
@@ -11,7 +12,7 @@ namespace ayafileio::python {
 namespace {
 
 PyObject* current_loop() {
-    PyObject* loop = PyObject_CallNoArgs(g_get_running_loop);
+    PyObject* loop = current_host();
     if (!loop) throw nb::python_error();
     return loop;
 }
