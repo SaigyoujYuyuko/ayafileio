@@ -210,15 +210,14 @@ counts  = await ayafileio.write_bytes_many([(p, payload) for p, payload in items
 counts  = await ayafileio.write_text_many(items, encoding="utf-8")
 ```
 
-One call reads (or writes) many files concurrently: opens go through
-`aopen()` (parallel OS opens), I/O goes through the platform async backend,
-and results come back **in input order**. The write variants take an
-iterable of `(path, data)` pairs (overwrite writes) and return per-file
-counts: characters for `write_text_many`, bytes for `write_bytes_many`.
-`max_concurrency` (keyword-only, default 64) caps in-flight files, so a
-hundred-thousand-item input can't exhaust file descriptors. Any failure
-raises the whole call, same as `asyncio.gather` — and batches are **not
-atomic**: when a write batch raises, some files may already be on disk.
+Batch reads run open, stat, read and close in one native worker task per file.
+`max_concurrency` (keyword-only, default 64) limits concurrent reads and
+must be positive. Results follow input order. If reads fail, the batch
+finishes before raising the first error in input order.
+
+Batch writes accept an iterable of `(path, data)` pairs and return per-file
+counts in input order. The counts are bytes for binary writes and characters
+for text writes. A failed write batch may leave some files on disk.
 
 Measured on 300 × 4 KiB cache-hot files: 5.6x over the sequential aiofiles
 loop, 2.6x over the sequential ayafileio loop.

@@ -194,12 +194,12 @@ counts  = await ayafileio.write_bytes_many([(p, payload) for p, payload in items
 counts  = await ayafileio.write_text_many(items, encoding="utf-8")
 ```
 
-一次调用并发读取（或写入）多个文件：打开走 `aopen()`（OS open 并行），
-I/O 走平台异步后端，返回顺序**与输入一致**。写系列接收 `(path, data)`
-对的可迭代对象（覆盖写），返回逐文件写入量：`write_text_many` 是字符数，
-`write_bytes_many` 是字节数。`max_concurrency`（仅关键字，默认 64）限制在飞文件数，
-十万级输入也不会打爆 fd。任一失败整体抛出，与 `asyncio.gather` 默认
-语义相同——批量**不是事务**：写批量抛出时，部分文件可能已经落盘。
+批量读取把打开、查询大小、读取和关闭合并到每个文件的一次原生线程池任务。
+`max_concurrency`（仅关键字，默认 64）限制并发数，必须为正数。结果保持输入顺序。
+读取失败时，整批结束后按输入顺序抛出第一个错误。
+
+批量写入接收 `(path, data)` 对的可迭代对象，并按输入顺序返回写入量。二进制写入按字节计数，文本写入按字符计数。
+批量写入失败时，部分文件可能已经落盘。
 
 实测 300 个 4 KiB 缓存热文件：对串行 aiofiles 循环 5.6x，对串行
 ayafileio 循环 2.6x。

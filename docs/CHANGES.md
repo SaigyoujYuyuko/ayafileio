@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- `read_bytes_many()` uses a bounded worker pool, reducing task allocation for large batches.
+  Results retain input order. Failed batches finish outstanding reads before raising the first
+  error in input order. Non-positive concurrency limits raise `ValueError`.
+
+### Fixed
+- Native whole-file reads close the file handle if allocation fails and reject sizes that cannot fit in Python bytes.
+- Empty files bypass buffer allocation. Whole-file I/O runs before entering Python for completion, and the path is moved into the worker task.
+
 ## [2.0.6] - 2026-11-03
 
 ### Added
