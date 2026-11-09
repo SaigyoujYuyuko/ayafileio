@@ -68,24 +68,31 @@ async def write_text(path: str | os.PathLike[str], data: str, encoding: "str | N
 
 
 async def read_bytes_many(paths: Iterable[str | os.PathLike[str]], *, max_concurrency: int = 64) -> "list[bytes]":
-    """并发读取多个文件，返回与输入顺序一致的 ``bytes`` 列表。
+    """Read files concurrently and return their bytes in input order.
 
-    打开动作经 :func:`ayafileio.aopen` 优先使用 Linux io_uring（不可用时回退 C++ 线程池）（多个 OS open
-    真正并行），读取走各平台原生后端；``max_concurrency`` 限制最大
-    并发数，避免海量路径打爆 fd。任一路径失败则整体抛出（同
-    ``asyncio.gather`` 默认语义）。
-
-    示例::
-
-        results = await ayafileio.read_bytes_many(model_shard_paths)
+    At most ``max_concurrency`` workers read files. If a read fails, the
+    batch drains before raising the first error in input order.
     """
-    sem = _semaphore(max_concurrency)
+    if max_concurrency <= 0:
+        raise ValueError("max_concurrency must be positive")
+    items = list(paths)
+    results = [b""] * len(items)
+    pending = iter(enumerate(items))
+    first_error = None
 
-    async def _one(p) -> bytes:
-        async with sem:
-            return await _read_whole_native(os.fspath(p))
+    async def worker() -> None:
+        nonlocal first_error
+        for index, path in pending:
+            try:
+                results[index] = await _read_whole_native(os.fspath(path))
+            except Exception as error:
+                if first_error is None or index < first_error[0]:
+                    first_error = (index, error)
 
-    return list(await _gather((_one(p) for p in paths)))
+    await _gather(worker() for _ in range(min(max_concurrency, len(items))))
+    if first_error is not None:
+        raise first_error[1]
+    return results
 
 
 async def read_text_many(paths: Iterable[str | os.PathLike[str]], encoding: "str | None" = None, *,

@@ -140,3 +140,44 @@ async def test_no_handle_leak(tmp_path):
             pass
     after = handle_count()
     assert abs(after - before) <= 2, f"句柄数 {before} -> {after}，快车道有泄漏"
+
+
+async def test_batch_read_bounds_worker_tasks(monkeypatch):
+    from ayafileio import _whole
+
+    workers = set()
+
+    async def read(path):
+        workers.add(asyncio.current_task())
+        await asyncio.sleep(0)
+        return path.encode()
+
+    monkeypatch.setattr(_whole, '_read_whole_native', read)
+    paths = [str(index) for index in range(1000)]
+    assert await _whole.read_bytes_many(iter(paths), max_concurrency=4) == [p.encode() for p in paths]
+    assert len(workers) == 4
+
+
+async def test_batch_read_drains_after_error(monkeypatch):
+    from ayafileio import _whole
+
+    completed = []
+
+    async def read(path):
+        if path == "first":
+            await asyncio.sleep(0)
+            raise FileNotFoundError(path)
+        if path == "second":
+            raise PermissionError(path)
+        completed.append(path)
+        return b"ok"
+
+    monkeypatch.setattr(_whole, "_read_whole_native", read)
+    with pytest.raises(FileNotFoundError, match="first"):
+        await _whole.read_bytes_many(["first", "second", "last"], max_concurrency=2)
+    assert completed == ["last"]
+
+
+async def test_batch_read_rejects_zero_concurrency():
+    with pytest.raises(ValueError, match="positive"):
+        await ayafileio.read_bytes_many(["file"], max_concurrency=0)
